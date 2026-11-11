@@ -9,11 +9,11 @@ metadata:
   center: [0, 30, 3]
 vector_layers:
   traces:
-    description: Trace lines, cut where the direction of travel changes
+    description: Trace lines, cut where the direction of travel changes. Lines of many traces on the same place are kept once, with a count
     fields:
-      gpx_id: Trace id
       dir: "Direction of travel in 32 steps of 11.25 degrees: 0 = east, 8 = north, 16 = west, 24 = south"
       fade: "1-10. Long edges (GPS jumps) get a low value, so the style can dim them"
+      n: "1-10. How many traces go through the line (10 = 10 or more), so the style can draw busy roads stronger"
     sql:
     - minzoom: 0
       maxzoom: 20
