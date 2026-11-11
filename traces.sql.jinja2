@@ -6,7 +6,9 @@
 -- often at double resolution, so a tile reads the copy made for two zooms
 -- deeper, or the lines look angular.
 {% set table = "trace_segments_z5" if zoom <= 3 else "trace_segments_z8" if zoom <= 6 else "trace_segments_z11" if zoom <= 9 else "trace_segments" %}
-{% set low = zoom <= 9 %}
+{% if zoom <= 9 %}
+-- The simplified copies are already cut at the GPS jumps, and their long
+-- edges come from the simplification, so nothing is dimmed: fade 10.
 WITH clipped AS (
   SELECT gpx_id, ST_AsMVTGeom(geom, {{bbox}}, {{extent}}, {{buffer}}, true) AS g
   FROM {{table}}
@@ -15,34 +17,40 @@ WITH clipped AS (
 edges AS (
   -- Simplify to a quarter of a pixel (4 of 4096 tile units) before
   -- cutting, so a tile does not carry many tiny pieces.
-  SELECT gpx_id, (ST_DumpSegments(ST_Simplify(g, 4))).geom AS g
+  SELECT gpx_id, (ST_DumpSegments(ST_Simplify(g, 4))).geom AS g, 10 AS fade
   FROM clipped
   WHERE g IS NOT NULL AND GeometryType(g) IN ('LINESTRING', 'MULTILINESTRING')
 ),
+{% else %}
+-- The full lines keep the GPS jumps. Like datamaps -g and gpxtiler serve,
+-- an edge longer than about 15 m at z16 (x1.5 for each zoom out) gets
+-- dimmer: brightness / (length / limit), with gamma 0.5, so the opacity
+-- is sqrt(limit / length). Edges over 200 times the limit are dropped.
+-- The length is measured in meters (Web Mercator) BEFORE clipping to the
+-- tile: a 1000 km jump clipped to the tile would look like a short edge.
+{% set limit_m = 14.9 * (1.5 ** (16 - zoom)) %}
+WITH edges AS (
+  SELECT gpx_id, ST_AsMVTGeom(g, {{bbox}}, {{extent}}, {{buffer}}, true) AS g,
+         least(10, greatest(1, round(10 * sqrt(least(1.0, {{limit_m}} / ST_Length(g))))))::int AS fade
+  FROM (
+    SELECT gpx_id, (ST_DumpSegments(geom)).geom AS g
+    FROM {{table}}
+    WHERE geom && {{bbox}}
+  ) s
+  WHERE g && {{bbox}}
+    AND ST_Length(g) > 0
+    AND ST_Length(g) < 200 * {{limit_m}}
+),
+{% endif %}
 dirs AS (
   -- dir: direction of travel in 32 steps. Tile y grows down, so north is
   -- start y - end y.
-  -- fade 1-10: like datamaps -g and gpxtiler serve, an edge longer than
-  -- about 15 m at z16 (x1.5 for each zoom out) gets dimmer: the brightness
-  -- is divided by (length / limit), and the PNG uses gamma 0.5, so the
-  -- opacity is sqrt(limit / length). Edges over 200 times the limit are
-  -- dropped. The limit in tile units is 1600 world units (2^32 per world)
-  -- * 1.5^(16 - z) * 2^(z - 20). The simplified copies are already cut at
-  -- the GPS jumps and their long edges come from the simplification, so
-  -- nothing is dimmed there.
-  SELECT gpx_id, g,
-{% if low %}
-         10 AS fade,
-{% else %}
-         least(10, greatest(1, round(10 * sqrt(least(1.0, 1600 * power(1.5, 16 - {{zoom}}) * power(2, {{zoom}} - 20) / ST_Length(g))))))::int AS fade,
-{% endif %}
+  SELECT gpx_id, g, fade,
          floor((degrees(atan2(ST_Y(ST_StartPoint(g)) - ST_Y(ST_EndPoint(g)),
                               ST_X(ST_EndPoint(g)) - ST_X(ST_StartPoint(g)))) + 360) / 11.25)::int % 32 AS dir
   FROM edges
-  WHERE NOT ST_Equals(ST_StartPoint(g), ST_EndPoint(g))
-{% if not low %}
-    AND ST_Length(g) < 200 * 1600 * power(1.5, 16 - {{zoom}}) * power(2, {{zoom}} - 20)
-{% endif %}
+  WHERE g IS NOT NULL AND GeometryType(g) = 'LINESTRING'
+    AND NOT ST_Equals(ST_StartPoint(g), ST_EndPoint(g))
 )
 SELECT ST_LineMerge(ST_Collect(g)) AS geom, gpx_id, dir, fade
 FROM dirs
