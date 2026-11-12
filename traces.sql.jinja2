@@ -8,12 +8,12 @@
 -- many traces go through it, like a pixel of the PNG tiles.
 --
 -- Low zooms read the simplified copies that import fills (trace_segments_z5,
--- _z8, _z11: one pixel at that zoom). Vector tiles are drawn sharp and
--- often at double resolution, so a tile reads the copy made for two zooms
--- deeper, or the lines look angular.
-{% set table = "trace_segments_z5" if zoom <= 3 else "trace_segments_z8" if zoom <= 6 else "trace_segments_z11" if zoom <= 9 else "trace_segments" %}
+-- _z8, _z11, _z14 with -simplified-zooms 5,8,11,14: one pixel at that
+-- zoom). Vector tiles are drawn sharp and often at double resolution, so a
+-- tile reads the copy made for two zooms deeper, or the lines look angular.
+{% set table = "trace_segments_z5" if zoom <= 3 else "trace_segments_z8" if zoom <= 6 else "trace_segments_z11" if zoom <= 9 else "trace_segments_z14" if zoom <= 12 else "trace_segments" %}
 {% set grid = 8 %}
-{% if zoom <= 9 %}
+{% if zoom <= 12 %}
 -- The simplified copies are already cut at the GPS jumps, and their long
 -- edges come from the simplification, so nothing is dimmed: fade 10.
 WITH edges AS (

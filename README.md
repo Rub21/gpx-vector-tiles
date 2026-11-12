@@ -17,7 +17,7 @@ The tile does not say which trace a line is from. Many traces follow the same ro
 | `fade` | 1 to 10. Long edges (GPS jumps) get a low value, so the style can dim them |
 | `n` | 1 to 10. How many traces go through the line (10 = 10 or more), so the style can draw busy roads stronger |
 
-Zooms 0 to 9 read the simplified copies `trace_segments_z5`, `_z8` and `_z11` (made by `gpxtiler import -simplified-zooms 5,8,11`), two zooms finer than the tile so the lines stay smooth. Zooms 10 and up read `trace_segments`.
+Zooms 0 to 12 read the simplified copies `trace_segments_z5`, `_z8`, `_z11` and `_z14` (made by `gpxtiler import -simplified-zooms 5,8,11,14`), two zooms finer than the tile so the lines stay smooth. Zooms 13 and up read `trace_segments`.
 
 ## Run
 
