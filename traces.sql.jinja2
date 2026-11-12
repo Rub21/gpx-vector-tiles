@@ -1,24 +1,28 @@
 -- Trace lines in the tile, cut into pieces by direction of travel, so the
 -- style can color them like the PNG tiles (datamaps lines-directional).
 --
+-- The tile does not say which trace a line is from. Many traces follow
+-- the same road, and a line per trace made the tiles big (12 MB at z9).
+-- Every edge is snapped to a grid of half a pixel (8 of 4096 tile units)
+-- and the edges that fall on the same place are kept once, with n: how
+-- many traces go through it, like a pixel of the PNG tiles.
+--
 -- Low zooms read the simplified copies that import fills (trace_segments_z5,
 -- _z8, _z11: one pixel at that zoom). Vector tiles are drawn sharp and
 -- often at double resolution, so a tile reads the copy made for two zooms
 -- deeper, or the lines look angular.
 {% set table = "trace_segments_z5" if zoom <= 3 else "trace_segments_z8" if zoom <= 6 else "trace_segments_z11" if zoom <= 9 else "trace_segments" %}
+{% set grid = 8 %}
 {% if zoom <= 9 %}
 -- The simplified copies are already cut at the GPS jumps, and their long
 -- edges come from the simplification, so nothing is dimmed: fade 10.
-WITH clipped AS (
-  SELECT gpx_id, ST_AsMVTGeom(geom, {{bbox}}, {{extent}}, {{buffer}}, true) AS g
-  FROM {{table}}
-  WHERE geom && {{bbox}}
-),
-edges AS (
-  -- Simplify to a quarter of a pixel (4 of 4096 tile units) before
-  -- cutting, so a tile does not carry many tiny pieces.
-  SELECT gpx_id, (ST_DumpSegments(ST_Simplify(g, 4))).geom AS g, 10 AS fade
-  FROM clipped
+WITH edges AS (
+  SELECT (ST_DumpSegments(g)).geom AS g, 10 AS fade
+  FROM (
+    SELECT ST_RemoveRepeatedPoints(ST_SnapToGrid(ST_AsMVTGeom(geom, {{bbox}}, {{extent}}, {{buffer}}, true), {{grid}})) AS g
+    FROM {{table}}
+    WHERE geom && {{bbox}}
+  ) clipped
   WHERE g IS NOT NULL AND GeometryType(g) IN ('LINESTRING', 'MULTILINESTRING')
 ),
 {% else %}
@@ -30,10 +34,10 @@ edges AS (
 -- tile: a 1000 km jump clipped to the tile would look like a short edge.
 {% set limit_m = 14.9 * (1.5 ** (16 - zoom)) %}
 WITH edges AS (
-  SELECT gpx_id, ST_AsMVTGeom(g, {{bbox}}, {{extent}}, {{buffer}}, true) AS g,
+  SELECT ST_SnapToGrid(ST_AsMVTGeom(g, {{bbox}}, {{extent}}, {{buffer}}, true), {{grid}}) AS g,
          least(10, greatest(1, round(10 * sqrt(least(1.0, {{limit_m}} / ST_Length(g))))))::int AS fade
   FROM (
-    SELECT gpx_id, (ST_DumpSegments(geom)).geom AS g
+    SELECT (ST_DumpSegments(geom)).geom AS g
     FROM {{table}}
     WHERE geom && {{bbox}}
   ) s
@@ -45,13 +49,19 @@ WITH edges AS (
 dirs AS (
   -- dir: direction of travel in 32 steps. Tile y grows down, so north is
   -- start y - end y.
-  SELECT gpx_id, g, fade,
+  SELECT g, fade,
          floor((degrees(atan2(ST_Y(ST_StartPoint(g)) - ST_Y(ST_EndPoint(g)),
                               ST_X(ST_EndPoint(g)) - ST_X(ST_StartPoint(g)))) + 360) / 11.25)::int % 32 AS dir
   FROM edges
   WHERE g IS NOT NULL AND GeometryType(g) = 'LINESTRING'
     AND NOT ST_Equals(ST_StartPoint(g), ST_EndPoint(g))
+),
+uniq AS (
+  -- The same edge from many traces is kept once. n: how many, up to 10.
+  SELECT g, dir, fade, least(count(*), 10)::int AS n
+  FROM dirs
+  GROUP BY g, dir, fade
 )
-SELECT ST_LineMerge(ST_Collect(g)) AS geom, gpx_id, dir, fade
-FROM dirs
-GROUP BY gpx_id, dir, fade
+SELECT ST_LineMerge(ST_Collect(g)) AS geom, dir, fade, n
+FROM uniq
+GROUP BY dir, fade, n
