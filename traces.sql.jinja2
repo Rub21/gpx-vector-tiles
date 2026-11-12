@@ -14,25 +14,31 @@
 {% set table = "trace_grid_z5" if zoom <= 3 else "trace_grid_z8" if zoom <= 6 else "trace_grid_z11" if zoom <= 9 else "trace_segments" %}
 {% if zoom <= 9 %}
 -- The grid tables are already cut at the GPS jumps, so nothing is dimmed:
--- fade 10. n is capped at 10 for the style.
+-- fade 10. A table is two zooms finer than the tile or more, so the edges
+-- are snapped again to half a pixel of the tile (8 of 4096 units) and the
+-- edges on the same place are kept once, adding up n (capped at 10).
 WITH edges AS (
-  SELECT ST_AsMVTGeom(geom, {{bbox}}, {{extent}}, {{buffer}}, true) AS g, 10 AS fade, least(n, 10) AS n
+  SELECT ST_RemoveRepeatedPoints(ST_SnapToGrid(ST_AsMVTGeom(geom, {{bbox}}, {{extent}}, {{buffer}}, true), 8)) AS g, n
   FROM {{table}}
   WHERE geom && {{bbox}}
 ),
 dirs AS (
   -- dir: direction of travel in 32 steps. Tile y grows down, so north is
   -- start y - end y.
-  SELECT g, fade, n,
+  SELECT g, n,
          floor((degrees(atan2(ST_Y(ST_StartPoint(g)) - ST_Y(ST_EndPoint(g)),
                               ST_X(ST_EndPoint(g)) - ST_X(ST_StartPoint(g)))) + 360) / 11.25)::int % 32 AS dir
   FROM edges
-  WHERE g IS NOT NULL AND GeometryType(g) = 'LINESTRING'
-    AND NOT ST_Equals(ST_StartPoint(g), ST_EndPoint(g))
+  WHERE g IS NOT NULL AND GeometryType(g) = 'LINESTRING' AND ST_NPoints(g) = 2
+),
+uniq AS (
+  SELECT g, dir, least(sum(n), 10)::int AS n
+  FROM dirs
+  GROUP BY g, dir
 )
-SELECT ST_LineMerge(ST_Collect(g)) AS geom, dir, fade, n
-FROM dirs
-GROUP BY dir, fade, n
+SELECT ST_LineMerge(ST_Collect(g)) AS geom, dir, 10 AS fade, n
+FROM uniq
+GROUP BY dir, n
 {% else %}
 -- The full lines keep the GPS jumps. Like datamaps -g and gpxtiler serve,
 -- an edge longer than about 15 m at z16 (x1.5 for each zoom out) gets
