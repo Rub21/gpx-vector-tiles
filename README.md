@@ -2,10 +2,18 @@
 
 Tilekiln config for the OpenStreetMap GPS traces as vector tiles (MVT), read from the PostGIS tables that [gpxtiler](https://github.com/Rub21/gpxtiler) fills. It has the same role as [spirit](https://github.com/pnorman/spirit) for vector.openstreetmap.org.
 
-- `config.yaml`: the tileset `gps`, one layer `traces`.
-- `traces.sql.jinja2`: the SQL of the layer.
+- `config.yaml`: the tileset `gps`, one layer per transport mode (`walk`, `bike`, `vehicle`, `plane`, `unknown`).
+- `traces.sql.jinja2`: the SQL of the layers. It is the only place to edit.
+- `gen-layers.sh`: writes the files in `layers/` from `traces.sql.jinja2`.
+- `layers/`: generated, do not edit.
 
-## The `traces` layer
+## Layers per mode
+
+Tilekiln renders each layer file alone, with no include and no variables from `config.yaml`. So `gen-layers.sh` copies `traces.sql.jinja2` once per mode into `layers/traces-<mode>.sql.jinja2` and sets the mode on the first line. Run `./gen-layers.sh` after every change to `traces.sql.jinja2` and commit `layers/`. The old single layer `traces` is gone: styles must use the five layer names.
+
+Only this year and the 2 before it are served (`recent_years` at the top of `traces.sql.jinja2`). The tables are partitioned by year, so a tile reads only those partitions.
+
+## The layers
 
 Lines of the traces, cut by direction of travel so a style can color them like the PNG tiles of gps-tile.openstreetmap.org.
 

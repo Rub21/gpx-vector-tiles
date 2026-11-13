@@ -8,8 +8,8 @@ metadata:
   bounds: [-180, -85.05112877980659, 180, 85.0511287798066]
   center: [0, 30, 3]
 vector_layers:
-  traces:
-    description: Trace lines, cut where the direction of travel changes. Lines of many traces on the same place are kept once, with a count
+  walk:
+    description: Trace lines under 7 km/h, cut where the direction of travel changes. Lines of many traces on the same place are kept once, with a count. This year and the 2 before it
     fields:
       dir: "Direction of travel in 32 steps of 11.25 degrees: 0 = east, 8 = north, 16 = west, 24 = south"
       fade: "1-10. Long edges (GPS jumps) get a low value, so the style can dim them"
@@ -18,4 +18,48 @@ vector_layers:
     - minzoom: 0
       maxzoom: 20
       extent: 4096
-      file: traces.sql.jinja2
+      file: layers/traces-walk.sql.jinja2
+  bike:
+    description: Trace lines between 7 and 30 km/h. Same fields as walk, same years
+    fields:
+      dir: "Direction of travel in 32 steps of 11.25 degrees"
+      fade: "1-10, low for GPS jumps"
+      n: "1-10, how many traces"
+    sql:
+    - minzoom: 0
+      maxzoom: 20
+      extent: 4096
+      file: layers/traces-bike.sql.jinja2
+  vehicle:
+    description: Trace lines between 30 and 250 km/h (cars, buses, trains). Same fields as walk, same years
+    fields:
+      dir: "Direction of travel in 32 steps of 11.25 degrees"
+      fade: "1-10, low for GPS jumps"
+      n: "1-10, how many traces"
+    sql:
+    - minzoom: 0
+      maxzoom: 20
+      extent: 4096
+      file: layers/traces-vehicle.sql.jinja2
+  plane:
+    description: Trace lines over 250 km/h. Same fields as walk, same years
+    fields:
+      dir: "Direction of travel in 32 steps of 11.25 degrees"
+      fade: "1-10, low for GPS jumps"
+      n: "1-10, how many traces"
+    sql:
+    - minzoom: 0
+      maxzoom: 20
+      extent: 4096
+      file: layers/traces-plane.sql.jinja2
+  unknown:
+    description: Trace lines without enough timed points for a speed. Same fields as walk, same years
+    fields:
+      dir: "Direction of travel in 32 steps of 11.25 degrees"
+      fade: "1-10, low for GPS jumps"
+      n: "1-10, how many traces"
+    sql:
+    - minzoom: 0
+      maxzoom: 20
+      extent: 4096
+      file: layers/traces-unknown.sql.jinja2
