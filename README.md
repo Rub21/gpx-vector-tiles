@@ -18,7 +18,7 @@ Tilekiln renders each layer file alone, with no include and no variables from `c
 
 The low zooms also keep only the edges that several traces go through (`min_n` in the template: 3 traces up to z4, 2 up to z6, every edge from z7). A busy road shows from far away, a lone trace shows when you zoom in, like the brightness of the PNG tiles. A z4 tile of Europe went from 239 KB to 127 KB.
 
-The snap grid is also coarser at the low zooms (2 px up to z6, 1 px to z9, half a pixel from z10). With 20 years of traces a z4 tile of Europe went from 1.9 MB (five layers, half a pixel) to about 250 KB. The low zooms are still slow to make (a few seconds of PostGIS per tile), so they are generated in advance and stored (`tilekiln generate zooms`, see gpx-tiles-stack), like the PNG tiles.
+The snap grid is also coarser at the low zooms (1 px up to z9, half a pixel from z10; 2 px made the lines look like a circuit board). With 20 years of traces a z4 tile of Europe went from 1.9 MB (five layers, half a pixel) to about 270 KB. The low zooms are still slow to make (a few seconds of PostGIS per tile), so they are generated in advance and stored (`tilekiln generate zooms`, see gpx-tiles-stack), like the PNG tiles.
 
 Only this year and the 2 before it are served (`recent_years` at the top of `traces.sql.jinja2`). The tables are partitioned by year, so a tile reads only those partitions.
 

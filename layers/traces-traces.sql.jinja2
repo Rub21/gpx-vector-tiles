@@ -12,10 +12,11 @@
 {% set where = "geom && " ~ bbox ~ " AND year >= extract(year FROM now())::int - " ~ recent_years ~ " AND " ~ mode_sql %}
 -- Simplified copies (gpxtiler import -simplified-zooms 5,8,11,14) up to z12.
 {% set table = "trace_segments_z5" if zoom <= 3 else "trace_segments_z8" if zoom <= 6 else "trace_segments_z11" if zoom <= 9 else "trace_segments_z14" if zoom <= 12 else "trace_segments" %}
--- Snap grid, in tile units (16 per pixel): 2 px up to z6, 1 px to z9, half from z10.
-{% set grid = 32 if zoom <= 6 else 16 if zoom <= 9 else 8 %}
--- Low zooms keep only edges with min_n traces or more.
-{% set min_n = 3 if zoom <= 4 else 2 if zoom <= 6 else 1 %}
+-- Snap grid, in tile units (16 per pixel): 1 px up to z9, half from z10.
+{% set grid = 16 if zoom <= 9 else 8 %}
+-- Low zooms keep only edges with min_n traces or more. Not for plane: a
+-- flight is one trace, and the layer is small anyway.
+{% set min_n = (3 if zoom <= 4 else 2 if zoom <= 6 else 1) if mode_sql != "mode = 4" else 1 %}
 {% if zoom <= 12 %}
 -- The copies are cut at the GPS jumps: nothing to dim, fade 10.
 WITH edges AS (
