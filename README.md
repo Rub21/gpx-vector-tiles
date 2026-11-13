@@ -2,14 +2,23 @@
 
 Tilekiln config for the OpenStreetMap GPS traces as vector tiles (MVT), read from the PostGIS tables that [gpxtiler](https://github.com/Rub21/gpxtiler) fills. It has the same role as [spirit](https://github.com/pnorman/spirit) for vector.openstreetmap.org.
 
-- `config.yaml`: the tileset `gps`, one layer per transport mode (`walk`, `bike`, `vehicle`, `plane`, `unknown`).
+- `config.yaml`: the tileset `gps`. Zoom 0 to 9: the layers `traces` (every mode but plane) and `plane`. Zoom 10 and up: one layer per transport mode (`walk`, `bike`, `vehicle`, `plane`, `unknown`).
 - `traces.sql.jinja2`: the SQL of the layers. It is the only place to edit.
 - `gen-layers.sh`: writes the files in `layers/` from `traces.sql.jinja2`.
 - `layers/`: generated, do not edit.
 
 ## Layers per mode
 
-Tilekiln renders each layer file alone, with no include and no variables from `config.yaml`. So `gen-layers.sh` copies `traces.sql.jinja2` once per mode into `layers/traces-<mode>.sql.jinja2` and sets the mode on the first line. Run `./gen-layers.sh` after every change to `traces.sql.jinja2` and commit `layers/`. The old single layer `traces` is gone: styles must use the five layer names.
+Tilekiln renders each layer file alone, with no include and no variables from `config.yaml`. So `gen-layers.sh` copies `traces.sql.jinja2` once per layer into `layers/traces-<name>.sql.jinja2` and sets the mode condition on the first line. Run `./gen-layers.sh` after every change to `traces.sql.jinja2` and commit `layers/`.
+
+| Zoom | Layers in the tile | Why |
+|---|---|---|
+| 0 to 9 | `traces` (walk, bike, vehicle, unknown together), `plane` | A line is one pixel: the modes would repeat the same edges. Planes are long straight lines across the map, the first thing a style hides |
+| 10 to 20 | `walk`, `bike`, `vehicle`, `plane`, `unknown` | One layer per mode, so a client shows or hides each one |
+
+The low zooms also keep only the edges that several traces go through (`min_n` in the template: 3 traces up to z4, 2 up to z6, every edge from z7). A busy road shows from far away, a lone trace shows when you zoom in, like the brightness of the PNG tiles. A z4 tile of Europe went from 239 KB to 127 KB.
+
+The snap grid is also coarser at the low zooms (2 px up to z6, 1 px to z9, half a pixel from z10). With 20 years of traces a z4 tile of Europe went from 1.9 MB (five layers, half a pixel) to about 250 KB. The low zooms are still slow to make (a few seconds of PostGIS per tile), so they are generated in advance and stored (`tilekiln generate zooms`, see gpx-tiles-stack), like the PNG tiles.
 
 Only this year and the 2 before it are served (`recent_years` at the top of `traces.sql.jinja2`). The tables are partitioned by year, so a tile reads only those partitions.
 
