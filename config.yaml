@@ -8,20 +8,42 @@ metadata:
   bounds: [-180, -85.05112877980659, 180, 85.0511287798066]
   center: [0, 30, 3]
 vector_layers:
-  # Zoom 0-9: traces (every mode but plane) and plane. Zoom 10+: one layer per mode.
-  traces:
-    description: Trace lines of every transport mode but plane, cut where the direction of travel changes. Lines of many traces on the same place are kept once, with a count
+  # One layer per transport mode at every zoom. All: this year and the 2 before it.
+  walk:
+    description: Trace lines under 7 km/h, cut where the direction of travel changes. Lines of many traces on the same place are kept once, with a count
     fields:
       dir: "Direction of travel in 32 steps of 11.25 degrees: 0 = east, 8 = north, 16 = west, 24 = south"
       fade: "1-10. Long edges (GPS jumps) get a low value, so the style can dim them"
       n: "1-10. How many traces go through the line (10 = 10 or more), so the style can draw busy roads stronger"
     sql:
     - minzoom: 0
-      maxzoom: 9
+      maxzoom: 20
       extent: 4096
-      file: layers/traces-traces.sql.jinja2
+      file: layers/traces-walk.sql.jinja2
+  bike:
+    description: Trace lines between 7 and 30 km/h. Same fields as walk
+    fields:
+      dir: "Direction of travel in 32 steps of 11.25 degrees: 0 = east, 8 = north, 16 = west, 24 = south"
+      fade: "1-10. Long edges (GPS jumps) get a low value, so the style can dim them"
+      n: "1-10. How many traces go through the line (10 = 10 or more), so the style can draw busy roads stronger"
+    sql:
+    - minzoom: 0
+      maxzoom: 20
+      extent: 4096
+      file: layers/traces-bike.sql.jinja2
+  vehicle:
+    description: Trace lines between 30 and 250 km/h (cars, buses, trains). Same fields as walk
+    fields:
+      dir: "Direction of travel in 32 steps of 11.25 degrees: 0 = east, 8 = north, 16 = west, 24 = south"
+      fade: "1-10. Long edges (GPS jumps) get a low value, so the style can dim them"
+      n: "1-10. How many traces go through the line (10 = 10 or more), so the style can draw busy roads stronger"
+    sql:
+    - minzoom: 0
+      maxzoom: 20
+      extent: 4096
+      file: layers/traces-vehicle.sql.jinja2
   plane:
-    description: Trace lines over 250 km/h. Same fields as traces
+    description: Trace lines over 250 km/h. Same fields as walk
     fields:
       dir: "Direction of travel in 32 steps of 11.25 degrees: 0 = east, 8 = north, 16 = west, 24 = south"
       fade: "1-10. Long edges (GPS jumps) get a low value, so the style can dim them"
@@ -31,47 +53,14 @@ vector_layers:
       maxzoom: 20
       extent: 4096
       file: layers/traces-plane.sql.jinja2
-  walk:
-    description: Trace lines under 7 km/h. Same fields as traces
-    fields:
-      dir: "Direction of travel in 32 steps of 11.25 degrees: 0 = east, 8 = north, 16 = west, 24 = south"
-      fade: "1-10. Long edges (GPS jumps) get a low value, so the style can dim them"
-      n: "1-10. How many traces go through the line (10 = 10 or more), so the style can draw busy roads stronger"
-    sql:
-    - minzoom: 10
-      maxzoom: 20
-      extent: 4096
-      file: layers/traces-walk.sql.jinja2
-  bike:
-    description: Trace lines between 7 and 30 km/h. Same fields as traces
-    fields:
-      dir: "Direction of travel in 32 steps of 11.25 degrees: 0 = east, 8 = north, 16 = west, 24 = south"
-      fade: "1-10. Long edges (GPS jumps) get a low value, so the style can dim them"
-      n: "1-10. How many traces go through the line (10 = 10 or more), so the style can draw busy roads stronger"
-    sql:
-    - minzoom: 10
-      maxzoom: 20
-      extent: 4096
-      file: layers/traces-bike.sql.jinja2
-  vehicle:
-    description: Trace lines between 30 and 250 km/h (cars, buses, trains). Same fields as traces
-    fields:
-      dir: "Direction of travel in 32 steps of 11.25 degrees: 0 = east, 8 = north, 16 = west, 24 = south"
-      fade: "1-10. Long edges (GPS jumps) get a low value, so the style can dim them"
-      n: "1-10. How many traces go through the line (10 = 10 or more), so the style can draw busy roads stronger"
-    sql:
-    - minzoom: 10
-      maxzoom: 20
-      extent: 4096
-      file: layers/traces-vehicle.sql.jinja2
   unknown:
-    description: Trace lines without enough timed points for a speed. Same fields as traces
+    description: Trace lines without enough timed points for a speed. Same fields as walk
     fields:
       dir: "Direction of travel in 32 steps of 11.25 degrees: 0 = east, 8 = north, 16 = west, 24 = south"
       fade: "1-10. Long edges (GPS jumps) get a low value, so the style can dim them"
       n: "1-10. How many traces go through the line (10 = 10 or more), so the style can draw busy roads stronger"
     sql:
-    - minzoom: 10
+    - minzoom: 0
       maxzoom: 20
       extent: 4096
       file: layers/traces-unknown.sql.jinja2

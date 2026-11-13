@@ -1,8 +1,7 @@
 -- Trace lines of the tile, cut by direction of travel. The same edge from
 -- many traces is kept once, with n = how many traces go through it.
 --
--- Layers: up to z9, "traces" (every mode but plane) and "plane"; from z10
--- one layer per mode. Zoom ranges in config.yaml.
+-- One layer per transport mode at every zoom (config.yaml).
 -- Only this year and the recent_years before it.
 {% set recent_years = 2 %}
 -- mode_sql: set by the generated layer files (gen-layers.sh). Alone, walk.
